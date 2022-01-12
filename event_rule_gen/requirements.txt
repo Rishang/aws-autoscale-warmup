@@ -1,0 +1,6 @@
+setuptools
+pymongo
+pytz
+numpy
+pandas
+PyYAML

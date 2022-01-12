@@ -1,0 +1,78 @@
+service: shedule
+useDotenv: true
+
+
+plugins:
+  - serverless-dotenv-plugin
+
+# variablesResolutionMode: 20210326
+
+provider:
+  name: aws
+  region:  ${env:ENV_AWS_REGION}
+  profile: ${env:ENV_AWS_PROFILE}
+  ecr:
+    # In this section you can define images that will be built locally and uploaded to ECR
+    images:
+      eventsheduler:
+        path: ./event_rule_gen
+      eventscale:
+        path: ./scale
+  iam:
+    role:
+      name: shedule-event-scale
+      statements:
+      - Effect: 'Allow'
+        Action: 
+          - 'application-autoscaling:*'
+          - 'autoscaling:UpdateAutoScalingGroup'
+          - 'events:DeleteRule'
+          - 'lambda:RemovePermission'
+          - 'events:ListTargetsByRule'
+          - 'events:DeleteEventBus'
+          - 'events:DeleteConnection'
+          - 'events:RemovePermission'
+          - 'events:RemoveTargets'
+          - 'events:DeleteArchive'          
+          - 'lambda:AddPermission'
+          - 'lambda:InvokeFunction'
+          - 's3:GetObject'
+        Resource: '*'
+      managedPolicies:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole
+        - arn:aws:iam::aws:policy/CloudWatchEventsFullAccess
+
+custom:
+  dotenv:
+    path: ./.env.dev
+    exclude:
+      - ENV_AWS_PROFILE
+  awsAccountId: ${aws:accountId}
+  larn_prefix: arn:aws:lambda:${env:ENV_AWS_REGION}:${self:custom.awsAccountId}:function
+
+functions:
+  autoscale:
+    name: rulegen-scale
+    image:
+      name: eventscale
+      command:
+        - main.lambda_handler
+
+  rulesgen:
+    name: rulegen
+    image: 
+      name: eventsheduler
+      command:
+        - scale_shedule.multi_sevice_shedule_rule
+    events:
+      - s3:
+          bucket: ${env:BUCKET_NAME} # your bucket name
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: ${env:BUCKET_FILE}
+          existing: true
+    
+    environment:
+      AUTOSCALE_LAMBDA_ARN: ${self:custom.larn_prefix}:${self:functions.autoscale.name}
+      BUCKET_NAME: ${env:BUCKET_NAME} # your bucket name
+      BUCKET_FILE: ${env:BUCKET_FILE} # your bucket filename
