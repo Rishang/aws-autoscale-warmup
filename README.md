@@ -1,4 +1,4 @@
-# Custom autoscaling for ec2/fargate
+# Onetime autoscaling for ec2/fargate
 
 ---
 
