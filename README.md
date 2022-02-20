@@ -1,4 +1,4 @@
-# Onetime autoscaling for ec2/fargate
+# autoscaling warmup for ec2/fargate
 
 ---
 
